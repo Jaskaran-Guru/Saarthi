@@ -1,68 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+// src/components/HomePage.jsx
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 const HomePage = () => {
-  const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchFeaturedProperties();
-  }, []);
-
-  const fetchFeaturedProperties = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/properties?featured=true');
-      setProperties(response.data.slice(0, 4));
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching properties:', error);
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
       {/* Navigation */}
-      <nav className="bg-transparent py-4 px-6">
+      <nav className="bg-transparent py-6 px-8">
         <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">S</span>
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-primary-500 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-2xl">S</span>
             </div>
-            <span className="text-xl font-bold text-gray-800">Saarthi</span>
+            <span className="text-2xl font-bold text-gray-800">Saarthi</span>
           </div>
           
-          <div className="hidden md:flex space-x-8">
-            <a href="#home" className="text-gray-700 hover:text-primary-600 font-medium border-b-2 border-primary-500">Home</a>
-            <a href="#listing" className="text-gray-700 hover:text-primary-600 font-medium">Listing</a>
-            <a href="#contact" className="text-gray-700 hover:text-primary-600 font-medium">Contact</a>
-            <a href="#add-property" className="text-gray-700 hover:text-primary-600 font-medium">Add Property</a>
+          <div className="hidden md:flex space-x-10 text-lg">
+            <Link to="/" className="text-gray-700 hover:text-primary-600 font-medium border-b-2 border-primary-500 pb-1">Home</Link>
+            <Link to="/listing" className="text-gray-700 hover:text-primary-600 font-medium">Listing</Link>
+            <a href="/contact" className="text-gray-700 hover:text-primary-600 font-medium">Contact</a>
+            <a href="/add-property" className="text-gray-700 hover:text-primary-600 font-medium">Add Property</a>
           </div>
           
-          <button className="bg-gray-800 text-white px-6 py-2 rounded-lg hover:bg-gray-900 transition">
+          <button className="bg-gray-800 text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition text-lg font-medium">
             Log In
           </button>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-6 py-20">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
+      <section className="container mx-auto px-8 py-16 lg:py-24">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <h1 className="text-5xl font-bold text-gray-900 leading-tight mb-6">
-              Discover Your Dream Property Today
+            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight mb-6">
+              Find Your Dream Property Across India
             </h1>
-            <p className="text-gray-600 text-lg mb-8">
-              Find the perfect home, apartment, or investment property with Saarthi - your trusted real estate partner.
+            <p className="text-gray-600 text-lg lg:text-xl mb-8 leading-relaxed">
+              Discover premium homes, apartments, and investment properties in Mumbai, Delhi, Bangalore, Pune & across India with Saarthi - your trusted real estate partner.
             </p>
             
             {/* Promo Badge */}
             <div className="flex items-center space-x-4 mb-8">
-              <span className="bg-primary-500 text-white px-4 py-2 rounded-full text-sm">
-                10% OFF On All Properties
+              <span className="bg-primary-500 text-white px-6 py-3 rounded-full text-base font-semibold">
+                🏠 Zero Brokerage Fee
               </span>
-              <button className="bg-gray-800 text-white px-6 py-3 rounded-lg hover:bg-gray-900 transition">
-                Explore
+              <button className="bg-gray-800 text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition text-base font-semibold">
+                Explore Properties
               </button>
             </div>
             
@@ -70,64 +53,280 @@ const HomePage = () => {
             <div className="flex items-center space-x-4">
               <div className="flex -space-x-2">
                 {[1,2,3,4,5].map(i => (
-                  <div key={i} className="w-10 h-10 rounded-full bg-gray-300 border-2 border-white"></div>
+                  <div key={i} className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 border-3 border-white"></div>
                 ))}
-                <div className="w-10 h-10 rounded-full bg-primary-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">
-                  210k+
+                <div className="w-12 h-12 rounded-full bg-primary-500 border-3 border-white flex items-center justify-center text-white text-xs font-bold">
+                  50k+
                 </div>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">People successfully got their dream homes</p>
-                <div className="flex items-center space-x-1">
-                  <span className="text-yellow-400">⭐⭐⭐⭐⭐</span>
-                  <span className="text-sm text-gray-600">127k Excellent Reviews</span>
+                <p className="font-semibold text-gray-900 text-base lg:text-lg">Happy Families Found Their Dream Homes</p>
+                <div className="flex items-center space-x-1 mt-1">
+                  <span className="text-yellow-400 text-lg">⭐⭐⭐⭐⭐</span>
+                  <span className="text-base text-gray-600">25k+ Excellent Reviews</span>
                 </div>
               </div>
             </div>
           </div>
           
-          <div>
+          <div className="relative">
             <img 
-              src="/api/placeholder/600/400" 
-              alt="Dream House" 
-              className="w-full h-auto rounded-2xl shadow-2xl"
+              src="https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+              alt="Modern Indian Home" 
+              className="w-full h-auto rounded-3xl shadow-2xl transform hover:scale-105 transition duration-500"
             />
+            <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-xl shadow-lg">
+              <p className="text-xl font-bold text-primary-600">₹2.5Cr+</p>
+              <p className="text-gray-600 text-sm">Properties Sold</p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
       <section className="bg-white py-16">
-        <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div className="p-6">
-              <div className="w-12 h-12 bg-primary-100 rounded-lg mx-auto mb-4 flex items-center justify-center">
+        <div className="container mx-auto px-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+            <div className="p-6 hover:bg-gray-50 rounded-2xl transition">
+              <div className="w-16 h-16 bg-primary-100 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl">
                 📋
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Detailed Listings</h3>
-              <p className="text-gray-600 text-sm">Comprehensive property information</p>
+              <h3 className="font-bold text-gray-900 mb-2 text-xl">Verified Properties</h3>
+              <p className="text-gray-600">RERA verified properties with complete documentation</p>
             </div>
-            <div className="p-6">
-              <div className="w-12 h-12 bg-primary-100 rounded-lg mx-auto mb-4 flex items-center justify-center">
+            
+            <div className="p-6 hover:bg-gray-50 rounded-2xl transition">
+              <div className="w-16 h-16 bg-primary-100 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl">
                 🔍
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Property Search</h3>
-              <p className="text-gray-600 text-sm">Advanced search and filtering</p>
+              <h3 className="font-bold text-gray-900 mb-2 text-xl">City-Wide Search</h3>
+              <p className="text-gray-600">Search across all major Indian cities and localities</p>
             </div>
-            <div className="p-6">
-              <div className="w-12 h-12 bg-primary-100 rounded-lg mx-auto mb-4 flex items-center justify-center">
-                ⭐
+            
+            <div className="p-6 hover:bg-gray-50 rounded-2xl transition">
+              <div className="w-16 h-16 bg-primary-100 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl">
+                💰
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Saved Favorites</h3>
-              <p className="text-gray-600 text-sm">Save properties you love</p>
+              <h3 className="font-bold text-gray-900 mb-2 text-xl">Best Prices</h3>
+              <p className="text-gray-600">Competitive prices with no hidden charges</p>
             </div>
-            <div className="p-6">
-              <div className="w-12 h-12 bg-primary-100 rounded-lg mx-auto mb-4 flex items-center justify-center">
-                📅
+            
+            <div className="p-6 hover:bg-gray-50 rounded-2xl transition">
+              <div className="w-16 h-16 bg-primary-100 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl">
+                📞
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Book Visits</h3>
-              <p className="text-gray-600 text-sm">Schedule property viewings</p>
+              <h3 className="font-bold text-gray-900 mb-2 text-xl">Expert Support</h3>
+              <p className="text-gray-600">Dedicated property consultants in every city</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Achievements Section */}
+      <section className="relative overflow-hidden">
+        <div className="grid lg:grid-cols-5 min-h-[400px]">
+          <div className="lg:col-span-3 bg-teal-600 text-white p-12 flex flex-col justify-center">
+            <h2 className="text-4xl lg:text-5xl font-bold mb-6">Our Pan-India Presence</h2>
+            <p className="text-lg mb-12 leading-relaxed opacity-90">
+              With properties across 25+ major Indian cities, Saarthi has helped thousands of families 
+              find their perfect home. From luxury apartments in Mumbai to affordable housing in Tier-2 cities, 
+              we cover all segments of the Indian real estate market.
+            </p>
+            
+            <div className="grid grid-cols-3 gap-8">
+              <div>
+                <p className="text-4xl font-bold mb-2">25+</p>
+                <p className="text-sm opacity-80">Indian Cities</p>
+              </div>
+              <div>
+                <p className="text-4xl font-bold mb-2">50k+</p>
+                <p className="text-sm opacity-80">Happy Families</p>
+              </div>
+              <div>
+                <p className="text-4xl font-bold mb-2">1L+</p>
+                <p className="text-sm opacity-80">Properties Listed</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="lg:col-span-2 bg-gradient-to-br from-green-100 to-green-200 relative">
+            <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+              <div className="w-16 h-16 border-4 border-teal-600 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-teal-600 rounded-full"></div>
+              </div>
+            </div>
+            <div className="absolute right-4 top-1/4 text-xs text-gray-600 transform rotate-90 origin-center">
+              <p>🇮🇳 Proudly Indian • Serving the Nation Since 2020</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Property Listings Section - Indian Cities */}
+      <section className="bg-green-50 py-20">
+        <div className="container mx-auto px-8">
+          <div className="mb-12">
+            <h3 className="text-lg text-gray-600 mb-2">Featured Properties Across India</h3>
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">Premium Properties in Top Cities</h2>
+            <p className="text-gray-600">Handpicked properties from Mumbai, Delhi, Bangalore, Pune & more</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {/* Property Card 1 - Mumbai */}
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group transform hover:-translate-y-2">
+              <Link to="/property/1" className="relative block">
+                <img 
+                  src="https://images.unsplash.com/photo-1518780664697-55e3ad937233?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" 
+                  alt="Luxury Apartment in Mumbai" 
+                  className="w-full h-64 object-cover group-hover:scale-110 transition duration-500"
+                />
+                <button className="absolute top-6 right-6 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg">
+                  <span className="text-xl">❤️</span>
+                </button>
+              </Link>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-semibold">Mumbai</span>
+                  <span className="text-3xl font-bold text-gray-900">₹2.5Cr</span>
+                </div>
+                <h3 className="font-bold text-xl mb-4">Sea View Luxury Apartment</h3>
+                <div className="flex items-center gap-6 text-base text-gray-600 mb-6">
+                  <span className="flex items-center gap-1">🏠 <strong>3</strong></span>
+                  <span className="flex items-center gap-1">🛁 <strong>3</strong></span>
+                  <span className="flex items-center gap-1">🚗 <strong>2</strong></span>
+                  <span className="flex items-center gap-1">📐 <strong>1200</strong></span>
+                </div>
+                <p className="text-gray-500 leading-relaxed mb-6">
+                  Premium 3BHK apartment with stunning sea views in Bandra West, Mumbai's most sought-after location...
+                </p>
+                <Link to="/property/1">
+                  <button className="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold hover:bg-primary-600 transition">
+                    View Details
+                  </button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Property Card 2 - Delhi */}
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group transform hover:-translate-y-2">
+              <Link to="/property/2" className="relative block">
+                <img 
+                  src="https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" 
+                  alt="Modern Villa in Delhi" 
+                  className="w-full h-64 object-cover group-hover:scale-110 transition duration-500"
+                />
+                <button className="absolute top-6 right-6 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg">
+                  <span className="text-xl">❤️</span>
+                </button>
+              </Link>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm bg-red-100 text-red-700 px-4 py-2 rounded-full font-semibold">Gurgaon</span>
+                  <span className="text-3xl font-bold text-gray-900">₹3.2Cr</span>
+                </div>
+                <h3 className="font-bold text-xl mb-4">Modern Villa in DLF City</h3>
+                <div className="flex items-center gap-6 text-base text-gray-600 mb-6">
+                  <span className="flex items-center gap-1">🏠 <strong>4</strong></span>
+                  <span className="flex items-center gap-1">🛁 <strong>4</strong></span>
+                  <span className="flex items-center gap-1">🚗 <strong>3</strong></span>
+                  <span className="flex items-center gap-1">📐 <strong>2500</strong></span>
+                </div>
+                <p className="text-gray-500 leading-relaxed mb-6">
+                  Spacious 4BHK independent villa with private garden in DLF Phase 2, perfect for families...
+                </p>
+                <Link to="/property/2">
+                  <button className="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold hover:bg-primary-600 transition">
+                    View Details
+                  </button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Property Card 3 - Bangalore */}
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group transform hover:-translate-y-2">
+              <Link to="/property/3" className="relative block">
+                <img 
+                  src="https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" 
+                  alt="Tech Hub Apartment Bangalore" 
+                  className="w-full h-64 object-cover group-hover:scale-110 transition duration-500"
+                />
+                <button className="absolute top-6 right-6 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg">
+                  <span className="text-xl">❤️</span>
+                </button>
+              </Link>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm bg-purple-100 text-purple-700 px-4 py-2 rounded-full font-semibold">Bangalore</span>
+                  <span className="text-3xl font-bold text-gray-900">₹1.8Cr</span>
+                </div>
+                <h3 className="font-bold text-xl mb-4">Tech Hub Premium Apartment</h3>
+                <div className="flex items-center gap-6 text-base text-gray-600 mb-6">
+                  <span className="flex items-center gap-1">🏠 <strong>3</strong></span>
+                  <span className="flex items-center gap-1">🛁 <strong>2</strong></span>
+                  <span className="flex items-center gap-1">🚗 <strong>2</strong></span>
+                  <span className="flex items-center gap-1">📐 <strong>1400</strong></span>
+                </div>
+                <p className="text-gray-500 leading-relaxed mb-6">
+                  Modern 3BHK apartment near Electronic City, perfect for IT professionals with world-class amenities...
+                </p>
+                <Link to="/property/3">
+                  <button className="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold hover:bg-primary-600 transition">
+                    View Details
+                  </button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Property Card 4 - Pune */}
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group transform hover:-translate-y-2">
+              <Link to="/property/4" className="relative block">
+                <img 
+                  src="https://images.unsplash.com/photo-1449844908441-8829872d2607?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" 
+                  alt="Family Home Pune" 
+                  className="w-full h-64 object-cover group-hover:scale-110 transition duration-500"
+                />
+                <button className="absolute top-6 right-6 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg">
+                  <span className="text-xl">❤️</span>
+                </button>
+              </Link>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm bg-green-100 text-green-700 px-4 py-2 rounded-full font-semibold">Pune</span>
+                  <span className="text-3xl font-bold text-gray-900">₹1.2Cr</span>
+                </div>
+                <h3 className="font-bold text-xl mb-4">Family Paradise in Hinjewadi</h3>
+                <div className="flex items-center gap-6 text-base text-gray-600 mb-6">
+                  <span className="flex items-center gap-1">🏠 <strong>2</strong></span>
+                  <span className="flex items-center gap-1">🛁 <strong>2</strong></span>
+                  <span className="flex items-center gap-1">🚗 <strong>1</strong></span>
+                  <span className="flex items-center gap-1">📐 <strong>980</strong></span>
+                </div>
+                <p className="text-gray-500 leading-relaxed mb-6">
+                  Cozy 2BHK apartment in gated community near IT parks with excellent connectivity and amenities...
+                </p>
+                <Link to="/property/4">
+                  <button className="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold hover:bg-primary-600 transition">
+                    View Details
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-primary-600 py-20">
+        <div className="container mx-auto px-8 text-center">
+          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-8">Ready to Find Your Dream Home in India?</h2>
+          <p className="text-xl text-green-100 mb-12">Join thousands of happy families across 25+ cities who found their perfect property with Saarthi</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button className="bg-white text-primary-600 px-12 py-4 rounded-lg hover:bg-gray-100 transition text-lg font-semibold">
+              Browse Properties
+            </button>
+            <button className="border-2 border-white text-white px-12 py-4 rounded-lg hover:bg-white hover:text-primary-600 transition text-lg font-semibold">
+              Contact Expert
+            </button>
           </div>
         </div>
       </section>

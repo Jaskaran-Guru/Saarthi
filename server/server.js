@@ -1,52 +1,78 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+require('dotenv').config();
 
-dotenv.config();
+const connectDB = require('./config/database');
+const passport = require('./config/passport');
+
+// Route imports
+const authRoutes = require('./routes/auth');
+const propertyRoutes = require('./routes/properties');
 
 const app = express();
 
+// Connect to MongoDB
+connectDB();
+
+// Trust proxy (for production)
+app.set('trust proxy', 1);
+
 // Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  credentials: true
+}));
 
-// Static files
-app.use('/uploads', express.static('uploads'));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Basic test route
-app.get('/', (req, res) => {
+// Sessions configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    collectionName: 'sessions'
+  }),
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/properties', propertyRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
   res.json({ 
-    message: 'Saarthi Real Estate API is running!',
-    timestamp: new Date().toISOString()
+    success: true, 
+    message: 'Saarthi API is running!',
+    authenticated: req.isAuthenticated(),
+    user: req.user ? req.user.name : null
   });
 });
-
-// API Routes - ONLY include routes that exist
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/properties', require('./routes/properties'));
-app.use('/api/appointments', require('./routes/appointments'));
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err.message);
-  console.error('Stack:', err.stack);
-  res.status(500).json({ 
-    message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+app.use((error, req, res, next) => {
+  res.status(error.status || 500).json({
+    success: false,
+    message: error.message || 'Internal server error'
   });
-});
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ message: 'Route not found' });
 });
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`✅ Saarthi server running on port ${PORT}`);
-  console.log(`📍 Server URL: http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
-
-module.exports = app;
