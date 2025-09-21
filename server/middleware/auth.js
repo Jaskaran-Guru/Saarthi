@@ -1,48 +1,41 @@
 // Check if user is authenticated via session
-const requireAuth = (req, res, next) => {
-  if (req.isAuthenticated()) {
+const isAuthenticated = (req, res, next) => {
+  console.log('Auth Check - Session:', req.session);
+  console.log('Auth Check - User:', req.user);
+  
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    console.log('User authenticated:', req.user.email);
     return next();
   }
-  res.status(401).json({ 
-    success: false, 
-    message: 'Access denied. Please log in.' 
+  
+  console.log('User not authenticated');
+  return res.status(401).json({
+    success: false,
+    message: 'Please login with Google to access this resource'
   });
 };
 
-// Check admin role
-const requireAdmin = (req, res, next) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Access denied. Please log in.' 
-    });
+// Check if user is admin
+const isAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    return next();
   }
   
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Access denied. Admin required.' 
-    });
-  }
+  return res.status(403).json({
+    success: false,
+    message: 'Admin access required'
+  });
+};
+
+// Optional authentication (doesn't block if not authenticated)
+const optionalAuth = (req, res, next) => {
+  // User info will be available in req.user if authenticated
+  // but won't block the request if not authenticated
   next();
 };
 
-// Check agent role
-const requireAgent = (req, res, next) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Access denied. Please log in.' 
-    });
-  }
-  
-  if (req.user.role !== 'agent' && req.user.role !== 'admin') {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Access denied. Agent access required.' 
-    });
-  }
-  next();
+module.exports = {
+  isAuthenticated,
+  isAdmin,
+  optionalAuth
 };
-
-module.exports = { requireAuth, requireAdmin, requireAgent };

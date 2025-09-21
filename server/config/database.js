@@ -2,15 +2,27 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
+    console.log('🔗 Connecting to MongoDB...');
+    
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
 
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    console.log(`🗄️  Database Name: ${conn.connection.name}`);
+    
+    // Test connection
+    console.log('🧪 Testing database connection...');
+    await mongoose.connection.db.admin().ping();
+    console.log('🎉 MongoDB connection test successful!');
+
   } catch (error) {
-    console.error('Database connection failed:', error.message);
-    process.exit(1);
+    console.error(`❌ Database connection failed: ${error.message}`);
+    console.error('Full error:', error);
+    
+    // Continue without database
+    console.log('⚠️  Continuing without database...');
   }
 };
 
