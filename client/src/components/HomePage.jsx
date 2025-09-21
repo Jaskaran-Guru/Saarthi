@@ -1,8 +1,11 @@
 // src/components/HomePage.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const HomePage = () => {
+  const { user, isAuthenticated, logout } = useAuth();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
       {/* Navigation */}
@@ -18,13 +21,38 @@ const HomePage = () => {
           <div className="hidden md:flex space-x-10 text-lg">
             <Link to="/" className="text-gray-700 hover:text-primary-600 font-medium border-b-2 border-primary-500 pb-1">Home</Link>
             <Link to="/listing" className="text-gray-700 hover:text-primary-600 font-medium">Listing</Link>
-            <a href="/contact" className="text-gray-700 hover:text-primary-600 font-medium">Contact</a>
-            <a href="/add-property" className="text-gray-700 hover:text-primary-600 font-medium">Add Property</a>
+            <Link to="/contact" className="text-gray-700 hover:text-primary-600 font-medium">Contact</Link>
+            <Link to="/add-property" className="text-gray-700 hover:text-primary-600 font-medium">Add Property</Link>
           </div>
           
-          <button className="bg-gray-800 text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition text-lg font-medium">
-            Log In
-          </button>
+          {/* Updated Auth Section */}
+          {isAuthenticated ? (
+            <div className="flex items-center gap-4">
+              {/* User Avatar with First Letter */}
+              <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-lg">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-gray-900">{user?.name}</span>
+                <button 
+                  onClick={logout}
+                  className="text-xs text-red-600 hover:text-red-800 text-left"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          ) : (
+            <a 
+              href="http://localhost:5000/api/auth/google"
+              className="bg-gray-800 text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition text-lg font-medium flex items-center gap-2"
+            >
+              <span>🔐</span>
+              Log In with Google
+            </a>
+          )}
         </div>
       </nav>
 
@@ -44,9 +72,11 @@ const HomePage = () => {
               <span className="bg-primary-500 text-white px-6 py-3 rounded-full text-base font-semibold">
                 🏠 Zero Brokerage Fee
               </span>
-              <button className="bg-gray-800 text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition text-base font-semibold">
-                Explore Properties
-              </button>
+              <Link to="/listing">
+                <button className="bg-gray-800 text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition text-base font-semibold">
+                  Explore Properties
+                </button>
+              </Link>
             </div>
             
             {/* Stats */}
@@ -321,12 +351,16 @@ const HomePage = () => {
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-8">Ready to Find Your Dream Home in India?</h2>
           <p className="text-xl text-green-100 mb-12">Join thousands of happy families across 25+ cities who found their perfect property with Saarthi</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-white text-primary-600 px-12 py-4 rounded-lg hover:bg-gray-100 transition text-lg font-semibold">
-              Browse Properties
-            </button>
-            <button className="border-2 border-white text-white px-12 py-4 rounded-lg hover:bg-white hover:text-primary-600 transition text-lg font-semibold">
-              Contact Expert
-            </button>
+            <Link to="/listing">
+              <button className="bg-white text-primary-600 px-12 py-4 rounded-lg hover:bg-gray-100 transition text-lg font-semibold">
+                Browse Properties
+              </button>
+            </Link>
+            <Link to="/contact">
+              <button className="border-2 border-white text-white px-12 py-4 rounded-lg hover:bg-white hover:text-primary-600 transition text-lg font-semibold">
+                Contact Expert
+              </button>
+            </Link>
           </div>
         </div>
       </section>
