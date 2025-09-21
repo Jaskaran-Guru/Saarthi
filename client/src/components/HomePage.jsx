@@ -1,15 +1,38 @@
-// src/components/HomePage.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../context/FavoritesContext';
+import LoginModal from './LoginModal';
 
 const HomePage = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, trackInteraction } = useAuth();
+  const { getFavoritesCount } = useFavorites();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const handleLoginClick = () => {
+    setShowLoginModal(true);
+    trackInteraction('login_modal_open', {
+      timestamp: new Date()
+    });
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setShowUserMenu(false);
+  };
+
+  const getUserInitial = () => {
+    if (user?.name) {
+      return user.name.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
       {/* Navigation */}
-      <nav className="bg-transparent py-6 px-8">
+      <nav className="bg-transparent py-6 px-8 border-b border-gray-200">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-primary-500 rounded-xl flex items-center justify-center">
@@ -19,39 +42,103 @@ const HomePage = () => {
           </div>
           
           <div className="hidden md:flex space-x-10 text-lg">
-            <Link to="/" className="text-gray-700 hover:text-primary-600 font-medium border-b-2 border-primary-500 pb-1">Home</Link>
-            <Link to="/listing" className="text-gray-700 hover:text-primary-600 font-medium">Listing</Link>
-            <Link to="/contact" className="text-gray-700 hover:text-primary-600 font-medium">Contact</Link>
-            <Link to="/add-property" className="text-gray-700 hover:text-primary-600 font-medium">Add Property</Link>
+            <Link 
+              to="/" 
+              className="text-gray-700 hover:text-primary-600 font-medium border-b-2 border-primary-500 pb-1"
+              onClick={() => trackInteraction('navigation_click', { page: 'home' })}
+            >
+              Home
+            </Link>
+            <Link 
+              to="/listing" 
+              className="text-gray-700 hover:text-primary-600 font-medium"
+              onClick={() => trackInteraction('navigation_click', { page: 'listing' })}
+            >
+              Listing
+            </Link>
+            <Link 
+              to="/contact" 
+              className="text-gray-700 hover:text-primary-600 font-medium"
+              onClick={() => trackInteraction('navigation_click', { page: 'contact' })}
+            >
+              Contact
+            </Link>
+            <Link 
+              to="/add-property" 
+              className="text-gray-700 hover:text-primary-600 font-medium"
+              onClick={() => trackInteraction('navigation_click', { page: 'add-property' })}
+            >
+              Add Property
+            </Link>
           </div>
           
-          {/* Updated Auth Section */}
+          {/* Auth Section */}
           {isAuthenticated ? (
-            <div className="flex items-center gap-4">
-              {/* User Avatar with First Letter */}
-              <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center shadow-lg">
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-600 transition shadow-lg"
+              >
                 <span className="text-white font-bold text-lg">
-                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                  {getUserInitial()}
                 </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-900">{user?.name}</span>
-                <button 
-                  onClick={logout}
-                  className="text-xs text-red-600 hover:text-red-800 text-left"
-                >
-                  Logout
-                </button>
-              </div>
+              </button>
+              
+              {showUserMenu && (
+                <div className="absolute right-0 top-14 bg-white rounded-lg shadow-xl border py-2 w-48 z-50">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="font-semibold text-gray-900 truncate">{user?.name}</p>
+                    <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+                  </div>
+                  
+                  <Link 
+                    to="/favorites" 
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      trackInteraction('favorites_click');
+                    }}
+                  >
+                    ❤️ Favorites ({getFavoritesCount()})
+                  </Link>
+                  
+                  <Link 
+                    to="/add-property" 
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      trackInteraction('add_property_click');
+                    }}
+                  >
+                    🏠 Add Property
+                  </Link>
+                  
+                  <hr className="my-2" />
+                  
+                  <button 
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition"
+                  >
+                    🚪 Logout
+                  </button>
+                </div>
+              )}
+              
+              {showUserMenu && (
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowUserMenu(false)}
+                ></div>
+              )}
             </div>
           ) : (
-            <a 
-              href="http://localhost:5000/api/auth/google"
+            <button
+              onClick={handleLoginClick}
               className="bg-gray-800 text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition text-lg font-medium flex items-center gap-2"
             >
-              <span>🔐</span>
-              Log In with Google
-            </a>
+              <span>👤</span>
+              Log In
+            </button>
           )}
         </div>
       </nav>
@@ -67,7 +154,6 @@ const HomePage = () => {
               Discover premium homes, apartments, and investment properties in Mumbai, Delhi, Bangalore, Pune & across India with Saarthi - your trusted real estate partner.
             </p>
             
-            {/* Promo Badge */}
             <div className="flex items-center space-x-4 mb-8">
               <span className="bg-primary-500 text-white px-6 py-3 rounded-full text-base font-semibold">
                 🏠 Zero Brokerage Fee
@@ -79,7 +165,6 @@ const HomePage = () => {
               </Link>
             </div>
             
-            {/* Stats */}
             <div className="flex items-center space-x-4">
               <div className="flex -space-x-2">
                 {[1,2,3,4,5].map(i => (
@@ -129,8 +214,8 @@ const HomePage = () => {
               <div className="w-16 h-16 bg-primary-100 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl">
                 🔍
               </div>
-              <h3 className="font-bold text-gray-900 mb-2 text-xl">City-Wide Search</h3>
-              <p className="text-gray-600">Search across all major Indian cities and localities</p>
+              <h3 className="font-bold text-gray-900 mb-2 text-xl">Advanced Search</h3>
+              <p className="text-gray-600">Smart filters to find exactly what you're looking for</p>
             </div>
             
             <div className="p-6 hover:bg-gray-50 rounded-2xl transition">
@@ -192,7 +277,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Property Listings Section - Indian Cities */}
+      {/* Property Listings Section */}
       <section className="bg-green-50 py-20">
         <div className="container mx-auto px-8">
           <div className="mb-12">
@@ -201,14 +286,14 @@ const HomePage = () => {
             <p className="text-gray-600">Handpicked properties from Mumbai, Delhi, Bangalore, Pune & more</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {/* Property Card 1 - Mumbai */}
-            <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group transform hover:-translate-y-2">
+          <div className="property-grid">
+            {/* Featured Properties from HomePage */}
+            <div className="property-card group">
               <Link to="/property/1" className="relative block">
                 <img 
                   src="https://images.unsplash.com/photo-1518780664697-55e3ad937233?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" 
                   alt="Luxury Apartment in Mumbai" 
-                  className="w-full h-64 object-cover group-hover:scale-110 transition duration-500"
+                  className="w-full h-64 object-cover image-hover"
                 />
                 <button className="absolute top-6 right-6 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg">
                   <span className="text-xl">❤️</span>
@@ -230,20 +315,20 @@ const HomePage = () => {
                   Premium 3BHK apartment with stunning sea views in Bandra West, Mumbai's most sought-after location...
                 </p>
                 <Link to="/property/1">
-                  <button className="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold hover:bg-primary-600 transition">
+                  <button className="btn-primary w-full">
                     View Details
                   </button>
                 </Link>
               </div>
             </div>
 
-            {/* Property Card 2 - Delhi */}
-            <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group transform hover:-translate-y-2">
+            {/* Add more featured properties similarly */}
+            <div className="property-card group">
               <Link to="/property/2" className="relative block">
                 <img 
                   src="https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" 
                   alt="Modern Villa in Delhi" 
-                  className="w-full h-64 object-cover group-hover:scale-110 transition duration-500"
+                  className="w-full h-64 object-cover image-hover"
                 />
                 <button className="absolute top-6 right-6 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg">
                   <span className="text-xl">❤️</span>
@@ -265,20 +350,20 @@ const HomePage = () => {
                   Spacious 4BHK independent villa with private garden in DLF Phase 2, perfect for families...
                 </p>
                 <Link to="/property/2">
-                  <button className="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold hover:bg-primary-600 transition">
+                  <button className="btn-primary w-full">
                     View Details
                   </button>
                 </Link>
               </div>
             </div>
 
-            {/* Property Card 3 - Bangalore */}
-            <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group transform hover:-translate-y-2">
+            {/* Continue with more properties */}
+            <div className="property-card group">
               <Link to="/property/3" className="relative block">
                 <img 
                   src="https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" 
                   alt="Tech Hub Apartment Bangalore" 
-                  className="w-full h-64 object-cover group-hover:scale-110 transition duration-500"
+                  className="w-full h-64 object-cover image-hover"
                 />
                 <button className="absolute top-6 right-6 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg">
                   <span className="text-xl">❤️</span>
@@ -300,20 +385,19 @@ const HomePage = () => {
                   Modern 3BHK apartment near Electronic City, perfect for IT professionals with world-class amenities...
                 </p>
                 <Link to="/property/3">
-                  <button className="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold hover:bg-primary-600 transition">
+                  <button className="btn-primary w-full">
                     View Details
                   </button>
                 </Link>
               </div>
             </div>
 
-            {/* Property Card 4 - Pune */}
-            <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group transform hover:-translate-y-2">
+            <div className="property-card group">
               <Link to="/property/4" className="relative block">
                 <img 
                   src="https://images.unsplash.com/photo-1449844908441-8829872d2607?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" 
                   alt="Family Home Pune" 
-                  className="w-full h-64 object-cover group-hover:scale-110 transition duration-500"
+                  className="w-full h-64 object-cover image-hover"
                 />
                 <button className="absolute top-6 right-6 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg">
                   <span className="text-xl">❤️</span>
@@ -335,7 +419,7 @@ const HomePage = () => {
                   Cozy 2BHK apartment in gated community near IT parks with excellent connectivity and amenities...
                 </p>
                 <Link to="/property/4">
-                  <button className="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold hover:bg-primary-600 transition">
+                  <button className="btn-primary w-full">
                     View Details
                   </button>
                 </Link>
@@ -364,6 +448,12 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+      />
     </div>
   );
 };
