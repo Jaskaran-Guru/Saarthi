@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import LoginModal from './LoginModal';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import LoginModal from "./LoginModal";
 
 const AddPropertyPage = () => {
   const navigate = useNavigate();
@@ -12,105 +12,132 @@ const AddPropertyPage = () => {
 
   const [propertyData, setPropertyData] = useState({
     // Basic Information
-    title: '',
-    description: '',
-    propertyType: '',
-    listingType: 'sale', // sale or rent
-    
+    title: "",
+    description: "",
+    propertyType: "",
+    listingType: "sale", // sale or rent
+
     // Location
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    locality: '',
-    
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    locality: "",
+
     // Property Details
-    bedrooms: '',
-    bathrooms: '',
-    balconies: '',
-    area: '',
-    areaUnit: 'sqft',
-    furnished: 'unfurnished',
-    facing: '',
-    floor: '',
-    totalFloors: '',
-    
+    bedrooms: "",
+    bathrooms: "",
+    balconies: "",
+    area: "",
+    areaUnit: "sqft",
+    furnished: "unfurnished",
+    facing: "",
+    floor: "",
+    totalFloors: "",
+
     // Pricing
-    price: '',
-    pricePerSqft: '',
+    price: "",
+    pricePerSqft: "",
     priceNegotiable: false,
-    maintenanceCharges: '',
-    
+    maintenanceCharges: "",
+
     // Amenities
     amenities: [],
-    
+
     // Additional Details
-    yearBuilt: '',
-    possession: 'ready',
-    parkingSpaces: '',
-    
+    yearBuilt: "",
+    possession: "ready",
+    parkingSpaces: "",
+
     // Owner Details
-    ownerName: user?.name || '',
-    ownerPhone: '',
-    ownerEmail: user?.email || '',
-    
+    ownerName: user?.name || "",
+    ownerPhone: "",
+    ownerEmail: user?.email || "",
+
     // Images
-    images: []
+    images: [],
   });
 
   const amenitiesList = [
-    'Swimming Pool', 'Gym', 'Parking', 'Garden', 'Security Guard',
-    'Lift', 'Power Backup', 'Club House', 'Children Play Area',
-    'CCTV', 'Intercom', 'Maintenance Staff', 'Fire Safety',
-    'Water Supply', 'Park', 'Shopping Center'
+    "Swimming Pool",
+    "Gym",
+    "Parking",
+    "Garden",
+    "Security Guard",
+    "Lift",
+    "Power Backup",
+    "Club House",
+    "Children Play Area",
+    "CCTV",
+    "Intercom",
+    "Maintenance Staff",
+    "Fire Safety",
+    "Water Supply",
+    "Park",
+    "Shopping Center",
   ];
 
   const cities = [
-    'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Pune', 'Chennai',
-    'Kolkata', 'Ahmedabad', 'Surat', 'Jaipur', 'Lucknow', 'Kanpur',
-    'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad'
+    "Mumbai",
+    "Delhi",
+    "Bangalore",
+    "Hyderabad",
+    "Pune",
+    "Chennai",
+    "Kolkata",
+    "Ahmedabad",
+    "Surat",
+    "Jaipur",
+    "Lucknow",
+    "Kanpur",
+    "Nagpur",
+    "Indore",
+    "Thane",
+    "Bhopal",
+    "Visakhapatnam",
+    "Pimpri-Chinchwad",
   ];
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setPropertyData(prev => ({
+    setPropertyData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const handleAmenityToggle = (amenity) => {
-    setPropertyData(prev => ({
+    setPropertyData((prev) => ({
       ...prev,
       amenities: prev.amenities.includes(amenity)
-        ? prev.amenities.filter(a => a !== amenity)
-        : [...prev.amenities, amenity]
+        ? prev.amenities.filter((a) => a !== amenity)
+        : [...prev.amenities, amenity],
     }));
   };
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     // In real app, you'd upload to cloud storage
-    const imageUrls = files.map(file => URL.createObjectURL(file));
-    setPropertyData(prev => ({
+    const imageUrls = files.map((file) => URL.createObjectURL(file));
+    setPropertyData((prev) => ({
       ...prev,
-      images: [...prev.images, ...imageUrls].slice(0, 10) // Max 10 images
+      images: [...prev.images, ...imageUrls].slice(0, 10), // Max 10 images
     }));
   };
 
   const removeImage = (index) => {
-    setPropertyData(prev => ({
+    setPropertyData((prev) => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index)
+      images: prev.images.filter((_, i) => i !== index),
     }));
   };
 
   const nextStep = () => {
-    if (currentStep < 5) setCurrentStep(prev => prev + 1);
+    if (currentStep < 5) setCurrentStep((prev) => prev + 1);
   };
 
   const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(prev => prev - 1);
+    if (currentStep > 1) setCurrentStep((prev) => prev - 1);
   };
 
   const handleSubmit = async (e) => {
@@ -123,19 +150,21 @@ const AddPropertyPage = () => {
     setLoading(true);
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      trackInteraction('property_listed', {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      trackInteraction("property_listed", {
         propertyType: propertyData.propertyType,
         city: propertyData.city,
-        price: propertyData.price
+        price: propertyData.price,
       });
 
-      alert('Property listed successfully! Our team will review and publish it within 24 hours.');
-      navigate('/listing');
+      alert(
+        "Property listed successfully! Our team will review and publish it within 24 hours."
+      );
+      navigate("/listing");
     } catch (error) {
-      console.error('Error submitting property:', error);
-      alert('Error submitting property. Please try again.');
+      console.error("Error submitting property:", error);
+      alert("Error submitting property. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -146,8 +175,10 @@ const AddPropertyPage = () => {
       case 1:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Basic Property Information</h2>
-            
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Basic Property Information
+            </h2>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Property Title *
@@ -221,8 +252,10 @@ const AddPropertyPage = () => {
       case 2:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Location Details</h2>
-            
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Location Details
+            </h2>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Complete Address *
@@ -251,8 +284,10 @@ const AddPropertyPage = () => {
                   className="form-input"
                 >
                   <option value="">Select City</option>
-                  {cities.map(city => (
-                    <option key={city} value={city}>{city}</option>
+                  {cities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -310,8 +345,10 @@ const AddPropertyPage = () => {
       case 3:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Property Specifications</h2>
-            
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Property Specifications
+            </h2>
+
             <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -475,12 +512,17 @@ const AddPropertyPage = () => {
       case 4:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Pricing & Additional Details</h2>
-            
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Pricing & Additional Details
+            </h2>
+
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {propertyData.listingType === 'sale' ? 'Sale Price *' : 'Monthly Rent *'} (₹)
+                  {propertyData.listingType === "sale"
+                    ? "Sale Price *"
+                    : "Monthly Rent *"}{" "}
+                  (₹)
                 </label>
                 <input
                   type="number"
@@ -489,7 +531,11 @@ const AddPropertyPage = () => {
                   onChange={handleInputChange}
                   required
                   className="form-input"
-                  placeholder={propertyData.listingType === 'sale' ? 'e.g., 25000000' : 'e.g., 50000'}
+                  placeholder={
+                    propertyData.listingType === "sale"
+                      ? "e.g., 25000000"
+                      : "e.g., 50000"
+                  }
                 />
               </div>
 
@@ -587,7 +633,10 @@ const AddPropertyPage = () => {
                 onChange={handleInputChange}
                 className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
               />
-              <label htmlFor="priceNegotiable" className="text-sm text-gray-700">
+              <label
+                htmlFor="priceNegotiable"
+                className="text-sm text-gray-700"
+              >
                 Price is negotiable
               </label>
             </div>
@@ -598,8 +647,11 @@ const AddPropertyPage = () => {
                 Select Amenities
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {amenitiesList.map(amenity => (
-                  <label key={amenity} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                {amenitiesList.map((amenity) => (
+                  <label
+                    key={amenity}
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                  >
                     <input
                       type="checkbox"
                       checked={propertyData.amenities.includes(amenity)}
@@ -617,8 +669,10 @@ const AddPropertyPage = () => {
       case 5:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Images & Contact Information</h2>
-            
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Images & Contact Information
+            </h2>
+
             {/* Image Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-4">
@@ -672,8 +726,10 @@ const AddPropertyPage = () => {
 
             {/* Owner Contact Details */}
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
-              
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Contact Information
+              </h3>
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -740,7 +796,7 @@ const AddPropertyPage = () => {
             </div>
             <span className="text-xl font-bold text-gray-800">Saarthi</span>
           </Link>
-          
+
           <div className="flex items-center gap-4">
             {!isAuthenticated && (
               <button
@@ -763,8 +819,8 @@ const AddPropertyPage = () => {
                 key={step}
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${
                   step <= currentStep
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-600'
+                    ? "bg-primary-500 text-white"
+                    : "bg-gray-200 text-gray-600"
                 }`}
               >
                 {step}
@@ -817,7 +873,7 @@ const AddPropertyPage = () => {
                         Submitting...
                       </div>
                     ) : (
-                      '🏠 List Property'
+                      "🏠 List Property"
                     )}
                   </button>
                 ) : (
@@ -836,9 +892,9 @@ const AddPropertyPage = () => {
       </div>
 
       {/* Login Modal */}
-      <LoginModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
       />
     </div>
   );
