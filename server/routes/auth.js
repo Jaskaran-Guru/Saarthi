@@ -4,16 +4,12 @@ const { isAuthenticated } = require('../middleware/auth');
 const User = require('../models/User');
 const router = express.Router();
 
-// @route   GET /api/auth/google
-// @desc    Redirect to Google for authentication
-// @access  Public
+
 router.get('/google', passport.authenticate('google', {
   scope: ['profile', 'email']
 }));
 
-// @route   GET /api/auth/google/callback
-// @desc    Google OAuth callback
-// @access  Public
+
 router.get('/google/callback', 
   passport.authenticate('google', { 
     failureRedirect: `${process.env.CLIENT_URL}/login?error=auth_failed`,
@@ -21,9 +17,7 @@ router.get('/google/callback',
   })
 );
 
-// @route   GET /api/auth/me
-// @desc    Get current user info
-// @access  Private
+
 router.get('/me', isAuthenticated, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -57,9 +51,7 @@ router.get('/me', isAuthenticated, async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/logout
-// @desc    Logout user and destroy session
-// @access  Private
+
 router.post('/logout', isAuthenticated, (req, res) => {
   const userName = req.user.name;
   
@@ -90,9 +82,8 @@ router.post('/logout', isAuthenticated, (req, res) => {
   });
 });
 
-// @route   GET /api/auth/check
-// @desc    Check authentication status
-// @access  Public
+
+
 router.get('/check', (req, res) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
     res.json({
@@ -115,9 +106,7 @@ router.get('/check', (req, res) => {
   }
 });
 
-// @route   PUT /api/auth/profile
-// @desc    Update user profile
-// @access  Private
+
 router.put('/profile', isAuthenticated, async (req, res) => {
   try {
     const { name, phone, preferences } = req.body;

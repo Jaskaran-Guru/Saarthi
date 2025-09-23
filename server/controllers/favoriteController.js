@@ -1,9 +1,6 @@
 const Favorite = require('../models/Favorite');
 const Property = require('../models/Property');
 
-// @desc    Get user favorites
-// @route   GET /api/favorites
-// @access  Private
 const getFavorites = async (req, res) => {
   try {
     const favorites = await Favorite.find({ user: req.user._id })
@@ -31,9 +28,7 @@ const getFavorites = async (req, res) => {
   }
 };
 
-// @desc    Add property to favorites
-// @route   POST /api/favorites
-// @access  Private
+
 const addFavorite = async (req, res) => {
   try {
     const { propertyId, notes } = req.body;

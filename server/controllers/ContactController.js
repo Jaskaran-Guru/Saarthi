@@ -1,9 +1,7 @@
 const Contact = require('../models/Contact');
 const Property = require('../models/Property');
 
-// @desc    Submit contact form
-// @route   POST /api/contact
-// @access  Public
+
 const submitContact = async (req, res) => {
   try {
     const {
@@ -79,9 +77,7 @@ const submitContact = async (req, res) => {
   }
 };
 
-// @desc    Get all contacts (admin only)
-// @route   GET /api/contact/all
-// @access  Private/Admin
+
 const getAllContacts = async (req, res) => {
   try {
     const {

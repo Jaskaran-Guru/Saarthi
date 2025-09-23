@@ -1,8 +1,5 @@
 const Property = require('../models/Property');
 
-// @desc    Get all properties with filters
-// @route   GET /api/properties
-// @access  Public
 const getProperties = async (req, res) => {
   try {
     const {
@@ -118,9 +115,7 @@ const getProperties = async (req, res) => {
   }
 };
 
-// @desc    Get single property
-// @route   GET /api/properties/:id
-// @access  Public
+
 const getProperty = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id)
@@ -167,9 +162,7 @@ const getProperty = async (req, res) => {
   }
 };
 
-// @desc    Create new property
-// @route   POST /api/properties
-// @access  Private
+
 const createProperty = async (req, res) => {
   try {
     // Add owner to property data

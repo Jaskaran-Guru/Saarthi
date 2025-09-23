@@ -19,9 +19,7 @@ const upload = multer({
   }
 });
 
-// @desc    Upload single image
-// @route   POST /api/upload/single
-// @access  Private
+
 router.post('/single', isAuthenticated, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -67,9 +65,7 @@ router.post('/single', isAuthenticated, upload.single('image'), async (req, res)
   }
 });
 
-// @desc    Upload multiple images
-// @route   POST /api/upload/multiple
-// @access  Private
+
 router.post('/multiple', isAuthenticated, upload.array('images', 10), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
@@ -118,9 +114,7 @@ router.post('/multiple', isAuthenticated, upload.array('images', 10), async (req
   }
 });
 
-// @desc    Delete image from Cloudinary
-// @route   DELETE /api/upload/:publicId
-// @access  Private
+
 router.delete('/:publicId', isAuthenticated, async (req, res) => {
   try {
     const { publicId } = req.params;

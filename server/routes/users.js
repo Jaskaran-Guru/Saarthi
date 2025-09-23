@@ -3,9 +3,7 @@ const router = express.Router();
 const { isAuthenticated, isAdmin } = require('../middleware/auth');
 const User = require('../models/User');
 
-// @desc    Get user profile
-// @route   GET /api/users/profile
-// @access  Private
+
 router.get('/profile', isAuthenticated, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -40,9 +38,7 @@ router.get('/profile', isAuthenticated, async (req, res) => {
   }
 });
 
-// @desc    Update user profile
-// @route   PUT /api/users/profile
-// @access  Private
+
 router.put('/profile', isAuthenticated, async (req, res) => {
   try {
     const { name, phone, preferences } = req.body;
@@ -84,9 +80,7 @@ router.put('/profile', isAuthenticated, async (req, res) => {
   }
 });
 
-// @desc    Get all users (admin only)
-// @route   GET /api/users
-// @access  Private/Admin
+
 router.get('/', isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 20, role, search } = req.query;
@@ -130,9 +124,7 @@ router.get('/', isAuthenticated, isAdmin, async (req, res) => {
   }
 });
 
-// @desc    Update user role (admin only)
-// @route   PUT /api/users/:id/role
-// @access  Private/Admin
+
 router.put('/:id/role', isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { role } = req.body;
@@ -171,9 +163,7 @@ router.put('/:id/role', isAuthenticated, isAdmin, async (req, res) => {
   }
 });
 
-// @desc    Delete user account
-// @route   DELETE /api/users/profile
-// @access  Private
+
 router.delete('/profile', isAuthenticated, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.user._id);
