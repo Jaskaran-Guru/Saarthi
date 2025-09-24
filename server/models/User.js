@@ -3,8 +3,9 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   googleId: {
     type: String,
-    required: true,
-    unique: true
+    required: false, // ⭐ Make it optional
+    unique: true,
+    sparse: true
   },
   name: {
     type: String,
@@ -18,13 +19,19 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
+  // ⭐ Add password field
+  password: {
+    type: String,
+    required: false // Optional for Google users
+  },
   avatar: {
     type: String,
     default: ''
   },
   provider: {
     type: String,
-    default: 'google'
+    enum: ['google', 'manual'],
+    default: 'manual' // ⭐ Default to manual
   },
   role: {
     type: String,

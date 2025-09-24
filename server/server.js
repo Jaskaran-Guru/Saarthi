@@ -8,6 +8,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const bcrypt = require('bcrypt'); // 🔐 Password hashing
 require('dotenv').config();
 
 const app = express();
@@ -82,6 +83,84 @@ if (process.env.MONGODB_URI) {
   Contact = require('./models/Contact');
 }
 
+// ===== PASSWORD HASHING UTILITY FUNCTIONS =====
+
+// Hash password function
+const hashPassword = async (password) => {
+  try {
+    const saltRounds = 12; // Higher salt rounds = more secure but slower
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    return hashedPassword;
+  } catch (error) {
+    throw new Error('Error hashing password');
+  }
+};
+
+// Compare password function
+const comparePassword = async (plainPassword, hashedPassword) => {
+  try {
+    const isMatch = await bcrypt.compare(plainPassword, hashedPassword);
+    return isMatch;
+  } catch (error) {
+    throw new Error('Error comparing password');
+  }
+};
+
+// Password strength checker
+const isStrongPassword = (password) => {
+  const minLength = 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  
+  return {
+    isValid: password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar,
+    checks: {
+      length: password.length >= minLength,
+      upperCase: hasUpperCase,
+      lowerCase: hasLowerCase,
+      numbers: hasNumbers,
+      specialChar: hasSpecialChar
+    },
+    score: [password.length >= minLength, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar].filter(Boolean).length
+  };
+};
+
+// ===== EMAIL DIGITS SUM CALCULATION UTILITY =====
+
+// Calculate sum of individual digits in email numbers
+const calculateEmailDigitsSum = (email) => {
+  const numbers = email.match(/\d+/g) || [];
+  let totalDigitsSum = 0;
+  const allDigits = [];
+  const digitCalculations = [];
+  
+  numbers.forEach(numberGroup => {
+    const digits = numberGroup.split('').map(digit => parseInt(digit));
+    allDigits.push(...digits);
+    const groupSum = digits.reduce((sum, digit) => sum + digit, 0);
+    totalDigitsSum += groupSum;
+    
+    digitCalculations.push({
+      numberGroup: numberGroup,
+      digits: digits,
+      digitsSum: groupSum,
+      calculation: `${digits.join('+')} = ${groupSum}`
+    });
+  });
+  
+  return {
+    hasNumbers: numbers.length > 0,
+    numberGroups: numbers,
+    individualDigits: allDigits,
+    digitCalculations: digitCalculations,
+    totalDigitsSum: totalDigitsSum,
+    numberGroupCount: numbers.length,
+    totalDigitsCount: allDigits.length
+  };
+};
+
 // ===== PASSPORT GOOGLE OAUTH WITH DATABASE =====
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
@@ -129,6 +208,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           existingUser.googleId = profile.id;
           existingUser.avatar = profile.photos[0]?.value || existingUser.avatar;
           existingUser.lastLogin = new Date();
+          existingUser.provider = 'google';
           await existingUser.save();
           console.log('✅ Linked Google account to existing user:', existingUser.email);
           return done(null, existingUser);
@@ -203,9 +283,11 @@ app.get('/', (req, res) => {
     user: req.user ? {
       name: req.user.name,
       email: req.user.email,
+      provider: req.user.provider,
       loginTime: req.user.lastLogin || req.user.loginTime
     } : null,
     database: User ? '✅ Connected' : '❌ Not connected',
+    security: '🔐 Password Hashing + Individual Digits Sum',
     endpoints: {
       health: '/api/health',
       auth: '/api/auth/*',
@@ -226,11 +308,362 @@ app.get('/api/health', (req, res) => {
     mongodb: process.env.MONGODB_URI ? '✅ Connected' : '❌ Not configured',
     models: User ? '✅ Loaded' : '❌ Not loaded',
     session: process.env.SESSION_SECRET ? '✅ Configured' : '❌ Not configured',
+    security: '🔐 bcrypt password hashing + digits sum calculation active',
     oauth: {
       google: process.env.GOOGLE_CLIENT_ID ? '✅ Configured' : '❌ Not configured'
     },
     user: req.user ? `✅ Logged in as ${req.user.name}` : '❌ Not logged in'
   });
+});
+
+// ===== SECURE AUTHENTICATION ROUTES =====
+
+// Register new user with password hashing
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    
+    console.log('📝 Registration attempt:', { name, email });
+    
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, and password are required'
+      });
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format'
+      });
+    }
+    
+    // Password strength validation
+    const passwordCheck = isStrongPassword(password);
+    if (!passwordCheck.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ Password is too weak',
+        requirements: {
+          message: 'Password must contain:',
+          checks: {
+            '8+ characters': passwordCheck.checks.length,
+            'Uppercase letter': passwordCheck.checks.upperCase,
+            'Lowercase letter': passwordCheck.checks.lowerCase,
+            'Number': passwordCheck.checks.numbers,
+            'Special character': passwordCheck.checks.specialChar
+          },
+          score: `${passwordCheck.score}/5`,
+          example: 'Example: MyPass123!'
+        }
+      });
+    }
+    
+    // Check if User model exists
+    if (!User) {
+      // Hash password even for dummy response
+      const hashedPassword = await hashPassword(password);
+      
+      // Calculate email digits sum for dummy user
+      const emailAnalysis = calculateEmailDigitsSum(email);
+      
+      const dummyUser = {
+        id: 'dummy_' + Date.now(),
+        name,
+        email,
+        provider: 'manual',
+        hashedPassword: hashedPassword.substring(0, 20) + '...',
+        emailDigitsSum: emailAnalysis.totalDigitsSum,
+        digitCalculations: emailAnalysis.digitCalculations,
+        joinedDate: new Date().toISOString()
+      };
+      
+      console.log('✅ Dummy user created with hashed password:', email);
+      console.log('🧮 Email digits sum:', emailAnalysis.totalDigitsSum);
+      
+      return res.status(201).json({
+        success: true,
+        message: '🎉 Registration successful! (Dummy mode)',
+        data: dummyUser,
+        security: '🔐 Password securely hashed with bcrypt',
+        emailAnalysis: emailAnalysis,
+        note: 'Connect MongoDB for real user storage'
+      });
+    }
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists with this email'
+      });
+    }
+    
+    // Hash the password
+    console.log('🔐 Hashing password...');
+    const hashedPassword = await hashPassword(password);
+    console.log('✅ Password hashed successfully');
+    
+    // Calculate email digits sum
+    const emailAnalysis = calculateEmailDigitsSum(email);
+    console.log('🧮 Email digits sum calculation:', emailAnalysis);
+    
+    // Create new user with hashed password
+    const newUser = await User.create({
+      name,
+      email,
+      password: hashedPassword, // Store hashed password
+      provider: 'manual',
+      avatar: '',
+      role: 'user',
+      phone: '',
+      preferences: {
+        notifications: true,
+        newsletter: true
+      },
+      lastLogin: new Date(),
+      isActive: true
+    });
+    
+    console.log('✅ New user registered with secure password:', newUser.email);
+    console.log('🧮 User email digits sum:', emailAnalysis.totalDigitsSum);
+    
+    res.status(201).json({
+      success: true,
+      message: '🎉 Registration successful!',
+      data: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        provider: newUser.provider,
+        role: newUser.role,
+        joinedDate: newUser.createdAt,
+        emailDigitsSum: emailAnalysis.totalDigitsSum,
+        digitCalculations: emailAnalysis.digitCalculations,
+        security: '🔐 Password securely hashed'
+      },
+      emailAnalysis: emailAnalysis
+    });
+    
+  } catch (error) {
+    console.error('❌ Registration error:', error);
+    
+    // Handle specific MongoDB validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validationErrors
+      });
+    }
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already exists'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed',
+      error: error.message
+    });
+  }
+});
+
+// Login user with password comparison
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    console.log('🔐 Login attempt:', email);
+    
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+    
+    // Check if User model exists
+    if (!User) {
+      // Dummy login with password verification
+      if (email.includes('test') || email.includes('demo')) {
+        const passwordCheck = isStrongPassword(password);
+        if (passwordCheck.isValid) {
+          const emailAnalysis = calculateEmailDigitsSum(email);
+          
+          console.log('✅ Dummy login successful with strong password:', email);
+          console.log('🧮 Email digits sum:', emailAnalysis.totalDigitsSum);
+          
+          return res.json({
+            success: true,
+            message: '🎉 Login successful! (Dummy mode)',
+            data: {
+              id: 'dummy_123',
+              name: 'Test User',
+              email: email,
+              provider: 'manual',
+              role: 'user',
+              emailDigitsSum: emailAnalysis.totalDigitsSum,
+              digitCalculations: emailAnalysis.digitCalculations,
+              lastLogin: new Date().toISOString()
+            },
+            emailAnalysis: emailAnalysis,
+            security: '🔐 Password strength verified',
+            note: 'Connect MongoDB for real authentication'
+          });
+        } else {
+          return res.status(401).json({
+            success: false,
+            message: 'Password too weak for security standards',
+            requirements: passwordCheck.checks
+          });
+        }
+      } else {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials (Use test email with strong password)'
+        });
+      }
+    }
+    
+    // Find user in database
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
+    
+    // Check if user is manual registration user
+    if (user.provider !== 'manual') {
+      return res.status(401).json({
+        success: false,
+        message: `This email is registered with ${user.provider}. Please use ${user.provider} login.`
+      });
+    }
+    
+    // Check if user has password (should have for manual users)
+    if (!user.password) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid authentication method'
+      });
+    }
+    
+    // Compare password with hashed password
+    console.log('🔐 Verifying password...');
+    const isPasswordValid = await comparePassword(password, user.password);
+    
+    if (!isPasswordValid) {
+      console.log('❌ Password verification failed for:', email);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
+    
+    // Calculate email digits sum
+    const emailAnalysis = calculateEmailDigitsSum(user.email);
+    console.log('🧮 User email digits sum:', emailAnalysis.totalDigitsSum);
+    
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+    
+    console.log('✅ User logged in with verified password:', user.email);
+    
+    res.json({
+      success: true,
+      message: '🎉 Login successful!',
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        provider: user.provider,
+        role: user.role,
+        avatar: user.avatar,
+        phone: user.phone,
+        emailDigitsSum: emailAnalysis.totalDigitsSum,
+        digitCalculations: emailAnalysis.digitCalculations,
+        lastLogin: user.lastLogin,
+        preferences: user.preferences
+      },
+      emailAnalysis: emailAnalysis,
+      security: '🔐 Password securely verified'
+    });
+    
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Login failed',
+      error: error.message
+    });
+  }
+});
+
+// Password strength checker endpoint
+app.post('/api/auth/check-password', (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required'
+      });
+    }
+    
+    const passwordCheck = isStrongPassword(password);
+    
+    res.json({
+      success: true,
+      message: 'Password strength analyzed',
+      strength: {
+        isValid: passwordCheck.isValid,
+        score: passwordCheck.score,
+        level: passwordCheck.score >= 5 ? 'Very Strong' :
+               passwordCheck.score >= 4 ? 'Strong' :
+               passwordCheck.score >= 3 ? 'Medium' :
+               passwordCheck.score >= 2 ? 'Weak' : 'Very Weak',
+        checks: {
+          'Length (8+ chars)': passwordCheck.checks.length,
+          'Uppercase letter': passwordCheck.checks.upperCase,
+          'Lowercase letter': passwordCheck.checks.lowerCase,
+          'Numbers': passwordCheck.checks.numbers,
+          'Special characters': passwordCheck.checks.specialChar
+        }
+      },
+      recommendations: passwordCheck.isValid ? 
+        ['✅ Password meets all security requirements'] :
+        [
+          !passwordCheck.checks.length ? '❌ Use at least 8 characters' : null,
+          !passwordCheck.checks.upperCase ? '❌ Add uppercase letters (A-Z)' : null,
+          !passwordCheck.checks.lowerCase ? '❌ Add lowercase letters (a-z)' : null,
+          !passwordCheck.checks.numbers ? '❌ Add numbers (0-9)' : null,
+          !passwordCheck.checks.specialChar ? '❌ Add special characters (!@#$%)' : null
+        ].filter(Boolean)
+    });
+    
+  } catch (error) {
+    console.error('❌ Password check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error checking password strength'
+    });
+  }
 });
 
 // ===== GOOGLE OAUTH ROUTES =====
@@ -260,6 +693,12 @@ app.get('/api/auth/google/callback',
     console.log('✅ Google OAuth callback success');
     console.log('👤 User logged in:', req.user.name);
     
+    // Calculate email digits sum for Google user
+    if (req.user && req.user.email) {
+      const emailAnalysis = calculateEmailDigitsSum(req.user.email);
+      console.log('🧮 Google user email digits sum:', emailAnalysis.totalDigitsSum);
+    }
+    
     // Redirect to frontend with success
     res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/?login=success`);
   }
@@ -268,6 +707,9 @@ app.get('/api/auth/google/callback',
 // Check authentication status
 app.get('/api/auth/check', (req, res) => {
   if (req.user) {
+    // Calculate email digits sum for authenticated user
+    const emailAnalysis = calculateEmailDigitsSum(req.user.email);
+    
     res.json({
       success: true,
       isAuthenticated: true,
@@ -277,8 +719,12 @@ app.get('/api/auth/check', (req, res) => {
         email: req.user.email,
         avatar: req.user.avatar,
         role: req.user.role || 'user',
+        provider: req.user.provider,
+        emailDigitsSum: emailAnalysis.totalDigitsSum,
+        digitCalculations: emailAnalysis.digitCalculations,
         loginTime: req.user.lastLogin || req.user.loginTime
-      }
+      },
+      emailAnalysis: emailAnalysis
     });
   } else {
     res.json({
@@ -292,6 +738,9 @@ app.get('/api/auth/check', (req, res) => {
 // Get current user
 app.get('/api/auth/me', (req, res) => {
   if (req.user) {
+    // Calculate email digits sum for current user
+    const emailAnalysis = calculateEmailDigitsSum(req.user.email);
+    
     res.json({
       success: true,
       data: {
@@ -300,9 +749,15 @@ app.get('/api/auth/me', (req, res) => {
         email: req.user.email,
         avatar: req.user.avatar,
         role: req.user.role || 'user',
+        provider: req.user.provider,
+        phone: req.user.phone,
+        preferences: req.user.preferences,
+        emailDigitsSum: emailAnalysis.totalDigitsSum,
+        digitCalculations: emailAnalysis.digitCalculations,
         joinedDate: req.user.createdAt || null,
         lastLogin: req.user.lastLogin || req.user.loginTime
-      }
+      },
+      emailAnalysis: emailAnalysis
     });
   } else {
     res.status(401).json({
@@ -347,7 +802,7 @@ app.post('/api/auth/logout', (req, res) => {
   }
 });
 
-// ===== PROPERTIES ROUTES WITH DATABASE =====
+// ===== PROPERTIES ROUTES =====
 
 // Get all properties
 app.get('/api/properties', async (req, res) => {
@@ -388,25 +843,6 @@ app.get('/api/properties', async (req, res) => {
               phone: "+91 98765 43210",
               email: "priya.sharma@saarthi.com"
             }
-          },
-          {
-            title: "Modern Villa in DLF City",
-            price: 32000000,
-            location: "Gurgaon",
-            address: "DLF Phase 2, Gurgaon, Haryana 122002",
-            city: "Gurgaon",
-            bedrooms: 4,
-            bathrooms: 4,
-            area: 2500,
-            propertyType: "villa",
-            furnishing: "semi-furnished",
-            possession: "ready",
-            description: "Spacious 4BHK independent villa with private garden",
-            images: [{ url: "https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80", alt: "Modern Villa" }],
-            amenities: ["Garden", "Security Guard", "Parking", "Power Backup"],
-            yearBuilt: 2019,
-            developer: "DLF Limited",
-            owner: req.user._id
           }
         ];
 
@@ -444,21 +880,6 @@ app.get('/api/properties', async (req, res) => {
         description: "Premium 3BHK apartment with stunning sea views in Bandra West",
         images: ["https://images.unsplash.com/photo-1518780664697-55e3ad937233?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80"],
         amenities: ["Swimming Pool", "Gym", "Security Guard", "Lift", "Parking"]
-      },
-      {
-        id: 2,
-        title: "Modern Villa in DLF City",
-        price: 32000000,
-        location: "Gurgaon", 
-        bedrooms: 4,
-        bathrooms: 4,
-        area: 2500,
-        propertyType: "villa",
-        furnishing: "semi-furnished",
-        possession: "ready",
-        description: "Spacious 4BHK independent villa with private garden in DLF Phase 2",
-        images: ["https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80"],
-        amenities: ["Garden", "Security Guard", "Parking", "Power Backup"]
       }
     ];
 
@@ -482,92 +903,7 @@ app.get('/api/properties', async (req, res) => {
   }
 });
 
-// Get single property
-app.get('/api/properties/:id', async (req, res) => {
-  try {
-    const propertyId = req.params.id;
-    
-    // Try database first if available
-    if (Property && propertyId.length === 24) {
-      const property = await Property.findById(propertyId)
-        .populate('owner', 'name email avatar');
-      
-      if (property) {
-        // Increment view count
-        property.views += 1;
-        await property.save();
-        
-        return res.json({
-          success: true,
-          data: property,
-          source: 'database'
-        });
-      }
-    }
-    
-    // Fallback to sample data
-    const sampleProperty = {
-      id: 1,
-      title: "Sea View Luxury Apartment",
-      price: 25000000,
-      location: "Mumbai",
-      address: "Bandra West, Mumbai, Maharashtra 400050",
-      bedrooms: 3,
-      bathrooms: 3,
-      garages: 2,
-      area: 1200,
-      propertyType: "apartment",
-      furnishing: "furnished",
-      possession: "ready",
-      description: "Premium 3BHK apartment with stunning sea views in Bandra West, Mumbai's most sought-after location.",
-      images: [
-        "https://images.unsplash.com/photo-1518780664697-55e3ad937233?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-      ],
-      amenities: ["Swimming Pool", "Gym", "Security Guard", "Lift", "Parking"],
-      features: [
-        "Sea-facing balconies in all rooms",
-        "Premium marble flooring",
-        "Modular kitchen with branded appliances",
-        "Central air conditioning"
-      ],
-      nearby: [
-        { name: "Bandra Station", distance: "2 km", type: "Transport" },
-        { name: "Linking Road", distance: "1.5 km", type: "Shopping" }
-      ],
-      agent: {
-        name: "Priya Sharma",
-        phone: "+91 98765 43210",
-        email: "priya.sharma@saarthi.com",
-        image: "https://images.unsplash.com/photo-1494790108755-2616b612b0b0?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"
-      },
-      views: 150,
-      yearBuilt: 2020
-    };
-    
-    if (parseInt(propertyId) === 1) {
-      res.json({
-        success: true,
-        data: sampleProperty,
-        source: 'sample_data'
-      });
-    } else {
-      res.status(404).json({
-        success: false,
-        message: 'Property not found'
-      });
-    }
-    
-  } catch (error) {
-    console.error('❌ Property fetch error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching property'
-    });
-  }
-});
-
-// ===== CONTACT ROUTE WITH DATABASE =====
+// ===== CONTACT ROUTE =====
 
 // Contact form submission
 app.post('/api/contact', async (req, res) => {
@@ -648,14 +984,14 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-// ===== USERS ROUTES WITH EMAIL NUMBER SUM CALCULATION =====
+// ===== USERS ROUTES WITH EMAIL DIGITS SUM CALCULATION =====
 
-console.log('📝 Registering users routes...');
+console.log('📝 Registering users routes with individual digits sum calculation...');
 
-// POST /api/users - Sum calculation of numbers in user emails
+// POST /api/users - Individual digits sum calculation of numbers in user emails
 app.post('/api/users', async (req, res) => {
   try {
-    console.log('🧮 Users sum calculation API hit via POST!');
+    console.log('🧮 Users individual digits sum calculation API hit via POST!');
     console.log('Request body:', req.body);
     
     // Check if User model is available
@@ -669,52 +1005,60 @@ app.post('/api/users', async (req, res) => {
         { name: "Alice Johnson", email: "alice2024@yahoo.com" },
         { name: "Bob Wilson", email: "bob456789@outlook.com" },
         { name: "Sarah Davis", email: "sarah@gmail.com" },
-        { name: "Mike Brown", email: "mike789xyz@hotmail.com" }
+        { name: "Mike Brown", email: "mike789xyz@hotmail.com" },
+        { name: "Test User", email: "test1866@gmail.com" }
       ];
 
-      let totalSum = 0;
+      let grandTotalDigitsSum = 0;
       const results = [];
 
-      console.log('🧮 Processing dummy users for sum calculation:');
+      console.log('🧮 Processing dummy users for INDIVIDUAL DIGITS sum calculation:');
       dummyUsers.forEach((user, index) => {
-        const numbers = user.email.match(/\d+/g) || [];
-        const sum = numbers.reduce((acc, num) => acc + parseInt(num), 0);
-        totalSum += sum;
+        const emailAnalysis = calculateEmailDigitsSum(user.email);
+        grandTotalDigitsSum += emailAnalysis.totalDigitsSum;
+        
+        console.log(`\n${index + 1}. ${user.name}: ${user.email}`);
+        console.log(`   🔢 Number groups: [${emailAnalysis.numberGroups.join(', ')}]`);
+        emailAnalysis.digitCalculations.forEach(calc => {
+          console.log(`   📊 ${calc.numberGroup} → ${calc.calculation}`);
+        });
+        console.log(`   ✅ Total digits sum: ${emailAnalysis.totalDigitsSum}`);
         
         results.push({
           name: user.name,
           email: user.email,
-          numbersFound: numbers,
-          individualSum: sum,
-          hasNumbers: numbers.length > 0
+          numberGroups: emailAnalysis.numberGroups,
+          individualDigits: emailAnalysis.individualDigits,
+          digitCalculations: emailAnalysis.digitCalculations,
+          individualDigitsSum: emailAnalysis.totalDigitsSum,
+          hasNumbers: emailAnalysis.hasNumbers
         });
-        
-        console.log(`${index + 1}. ${user.name}: ${user.email} → Numbers: [${numbers.join(',')}] → Sum: ${sum}`);
       });
 
       console.log(`\n📊 DUMMY DATA SUMMARY:`);
-      console.log(`   🧮 Total Sum: ${totalSum}`);
+      console.log(`   🧮 Grand Total Digits Sum: ${grandTotalDigitsSum}`);
       console.log(`   👥 Total Users: ${dummyUsers.length}`);
       console.log(`   🔢 Users with Numbers: ${results.filter(u => u.hasNumbers).length}`);
 
       return res.json({
         success: true,
-        message: '🧮 Dummy users sum calculation completed',
+        message: '🧮 Dummy users individual digits sum calculation completed',
         source: 'dummy_data',
+        calculation_method: 'Individual digits sum (e.g., 2006 → 2+0+0+6 = 8, 1866 → 1+8+6+6 = 21)',
         summary: {
           totalUsers: dummyUsers.length,
           usersWithNumbers: results.filter(u => u.hasNumbers).length,
-          grandTotalSum: totalSum,
-          averagePerUser: parseFloat((totalSum / dummyUsers.length).toFixed(2))
+          grandTotalDigitsSum: grandTotalDigitsSum,
+          averageDigitsSumPerUser: parseFloat((grandTotalDigitsSum / dummyUsers.length).toFixed(2))
         },
         data: results,
-        note: 'This is dummy data. Connect MongoDB to get real user data.'
+        note: 'This calculates sum of individual digits in email numbers. Connect MongoDB for real data.'
       });
     }
 
     // Fetch users from database
     const users = await User.find({})
-      .select('name email googleId avatar role createdAt lastLogin isActive')
+      .select('name email googleId avatar role provider createdAt lastLogin isActive preferences phone')
       .sort({ createdAt: -1 });
 
     if (users.length === 0) {
@@ -723,34 +1067,31 @@ app.post('/api/users', async (req, res) => {
         success: true,
         message: '👥 No users found in database',
         totalUsers: 0,
-        totalSum: 0,
+        totalDigitsSum: 0,
         data: [],
-        note: 'Login with Google to create users'
+        note: 'Register users to see calculations'
       });
     }
 
-    console.log(`👥 Found ${users.length} users in database, calculating sum...`);
+    console.log(`👥 Found ${users.length} users in database, calculating INDIVIDUAL DIGITS sum...`);
 
-    let grandTotal = 0;
+    let grandTotalDigitsSum = 0;
     const processedUsers = [];
 
-    // Process each user to find numbers in email and calculate sum
+    // Process each user to find numbers in email and calculate INDIVIDUAL DIGITS sum
     users.forEach((user, index) => {
       console.log(`\n${index + 1}. Processing user: ${user.name}`);
       console.log(`   📧 Email: ${user.email}`);
+      console.log(`   🔗 Provider: ${user.provider}`);
       
-      // Extract all numbers from email using regex
-      const emailNumbers = user.email.match(/\d+/g) || [];
-      console.log(`   🔢 Numbers found: [${emailNumbers.join(', ')}]`);
+      const emailAnalysis = calculateEmailDigitsSum(user.email);
+      grandTotalDigitsSum += emailAnalysis.totalDigitsSum;
       
-      // Convert strings to integers and calculate sum
-      const numbersAsInts = emailNumbers.map(num => parseInt(num, 10));
-      const userSum = numbersAsInts.reduce((sum, num) => sum + num, 0);
-      
-      console.log(`   ➕ Individual sum: ${userSum}`);
-      
-      // Add to grand total
-      grandTotal += userSum;
+      console.log(`   🔢 Number groups: [${emailAnalysis.numberGroups.join(', ')}]`);
+      emailAnalysis.digitCalculations.forEach(calc => {
+        console.log(`   📊 ${calc.numberGroup} → ${calc.calculation}`);
+      });
+      console.log(`   ✅ Total digits sum: ${emailAnalysis.totalDigitsSum}`);
       
       // Store processed user data
       processedUsers.push({
@@ -759,15 +1100,20 @@ app.post('/api/users', async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
+        provider: user.provider,
+        phone: user.phone,
+        preferences: user.preferences,
         joinedDate: user.createdAt,
         lastLogin: user.lastLogin,
         isActive: user.isActive,
         emailAnalysis: {
-          hasNumbers: emailNumbers.length > 0,
-          numbersFound: emailNumbers,
-          numbersAsIntegers: numbersAsInts,
-          individualSum: userSum,
-          numberCount: emailNumbers.length
+          hasNumbers: emailAnalysis.hasNumbers,
+          numberGroups: emailAnalysis.numberGroups,
+          individualDigits: emailAnalysis.individualDigits,
+          digitCalculations: emailAnalysis.digitCalculations,
+          individualDigitsSum: emailAnalysis.totalDigitsSum,
+          numberGroupCount: emailAnalysis.numberGroupCount,
+          totalDigitsCount: emailAnalysis.totalDigitsCount
         }
       });
     });
@@ -775,65 +1121,81 @@ app.post('/api/users', async (req, res) => {
     // Calculate statistics
     const usersWithNumbers = processedUsers.filter(user => user.emailAnalysis.hasNumbers);
     const usersWithoutNumbers = processedUsers.filter(user => !user.emailAnalysis.hasNumbers);
+    const googleUsers = processedUsers.filter(user => user.provider === 'google');
+    const manualUsers = processedUsers.filter(user => user.provider === 'manual');
 
-    console.log(`\n📊 CALCULATION RESULTS:`);
-    console.log(`   🧮 Grand Total Sum: ${grandTotal}`);
+    console.log(`\n📊 INDIVIDUAL DIGITS CALCULATION RESULTS:`);
+    console.log(`   🧮 Grand Total Digits Sum: ${grandTotalDigitsSum}`);
     console.log(`   👥 Total Users: ${users.length}`);
     console.log(`   🔢 Users with Numbers: ${usersWithNumbers.length}`);
     console.log(`   ❌ Users without Numbers: ${usersWithoutNumbers.length}`);
-    console.log(`   📈 Average per User: ${users.length > 0 ? (grandTotal / users.length).toFixed(2) : 0}`);
-    console.log(`   📈 Average per User with Numbers: ${usersWithNumbers.length > 0 ? (grandTotal / usersWithNumbers.length).toFixed(2) : 0}`);
+    console.log(`   🔐 Google Users: ${googleUsers.length}`);
+    console.log(`   📝 Manual Users: ${manualUsers.length}`);
+    console.log(`   📈 Average Digits Sum per User: ${users.length > 0 ? (grandTotalDigitsSum / users.length).toFixed(2) : 0}`);
 
     // Return comprehensive response
     res.json({
       success: true,
-      message: '🧮 Users sum calculation completed successfully',
+      message: '🧮 Users individual digits sum calculation completed successfully',
       timestamp: new Date().toISOString(),
       source: 'database',
+      calculation_method: 'Individual digits sum (e.g., 2006 → 2+0+0+6 = 8, 1866 → 1+8+6+6 = 21)',
+      security: '🔐 Secure API with bcrypt password hashing',
       summary: {
         totalUsers: users.length,
         usersWithNumbers: usersWithNumbers.length,
         usersWithoutNumbers: usersWithoutNumbers.length,
-        grandTotalSum: grandTotal,
-        averagePerUser: users.length > 0 ? parseFloat((grandTotal / users.length).toFixed(2)) : 0,
-        averagePerUserWithNumbers: usersWithNumbers.length > 0 ? 
-          parseFloat((grandTotal / usersWithNumbers.length).toFixed(2)) : 0
+        googleUsers: googleUsers.length,
+        manualUsers: manualUsers.length,
+        grandTotalDigitsSum: grandTotalDigitsSum,
+        averageDigitsSumPerUser: users.length > 0 ? parseFloat((grandTotalDigitsSum / users.length).toFixed(2)) : 0,
+        averageDigitsSumPerUserWithNumbers: usersWithNumbers.length > 0 ? 
+          parseFloat((grandTotalDigitsSum / usersWithNumbers.length).toFixed(2)) : 0
       },
       calculations: processedUsers,
-      topUsers: usersWithNumbers
-        .sort((a, b) => b.emailAnalysis.individualSum - a.emailAnalysis.individualSum)
+      topUsersDigitsSum: usersWithNumbers
+        .sort((a, b) => b.emailAnalysis.individualDigitsSum - a.emailAnalysis.individualDigitsSum)
         .slice(0, 5)
         .map(user => ({
           name: user.name,
           email: user.email,
-          sum: user.emailAnalysis.individualSum,
-          numbers: user.emailAnalysis.numbersFound
+          provider: user.provider,
+          digitsSum: user.emailAnalysis.individualDigitsSum,
+          digitCalculations: user.emailAnalysis.digitCalculations
         })),
       breakdown: {
         usersWithNumbers: usersWithNumbers.map(user => ({
           name: user.name,
           email: user.email,
-          numbers: user.emailAnalysis.numbersFound,
-          sum: user.emailAnalysis.individualSum
+          provider: user.provider,
+          numberGroups: user.emailAnalysis.numberGroups,
+          individualDigits: user.emailAnalysis.individualDigits,
+          digitCalculations: user.emailAnalysis.digitCalculations,
+          digitsSum: user.emailAnalysis.individualDigitsSum
         })),
         usersWithoutNumbers: usersWithoutNumbers.map(user => ({
           name: user.name,
-          email: user.email
-        }))
+          email: user.email,
+          provider: user.provider
+        })),
+        byProvider: {
+          google: googleUsers.length,
+          manual: manualUsers.length
+        }
       }
     });
 
   } catch (error) {
-    console.error('❌ Users sum calculation error:', error);
+    console.error('❌ Users digits sum calculation error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error calculating users sum',
+      message: 'Error calculating users digits sum',
       error: error.message
     });
   }
 });
 
-// GET /api/users - Simple user list
+// GET /api/users - Simple user list with digits sum
 app.get('/api/users', async (req, res) => {
   try {
     console.log('📊 Fetching users via GET...');
@@ -850,7 +1212,7 @@ app.get('/api/users', async (req, res) => {
 
     // Fetch all users from database
     const users = await User.find({})
-      .select('name email googleId avatar role createdAt lastLogin isActive')
+      .select('name email googleId avatar role provider createdAt lastLogin isActive preferences phone')
       .sort({ createdAt: -1 });
 
     console.log(`👥 Found ${users.length} users in database`);
@@ -861,28 +1223,50 @@ app.get('/api/users', async (req, res) => {
         message: '👥 No users found in database',
         totalUsers: 0,
         data: [],
-        note: 'Login with Google to create users'
+        note: 'Register users to see them here'
       });
     }
 
-    // Return simple user data without calculations
-    const userData = users.map(user => ({
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      role: user.role,
-      joinedDate: user.createdAt,
-      lastLogin: user.lastLogin,
-      isActive: user.isActive
-    }));
+    // Return simple user data with digits sum included
+    const userData = users.map(user => {
+      const emailAnalysis = calculateEmailDigitsSum(user.email);
+      return {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        role: user.role,
+        provider: user.provider,
+        phone: user.phone,
+        preferences: user.preferences,
+        joinedDate: user.createdAt,
+        lastLogin: user.lastLogin,
+        isActive: user.isActive,
+        emailDigitsSum: emailAnalysis.totalDigitsSum,
+        digitCalculations: emailAnalysis.digitCalculations
+      };
+    });
+
+    // Calculate provider statistics
+    const googleUsers = userData.filter(user => user.provider === 'google').length;
+    const manualUsers = userData.filter(user => user.provider === 'manual').length;
+    const totalDigitsSum = userData.reduce((sum, user) => sum + user.emailDigitsSum, 0);
 
     res.json({
       success: true,
-      message: '👥 Users fetched successfully',
+      message: '👥 Users fetched successfully with digits sum',
       totalUsers: users.length,
+      statistics: {
+        googleUsers,
+        manualUsers,
+        activeUsers: userData.filter(user => user.isActive).length,
+        totalDigitsSum,
+        averageDigitsSum: users.length > 0 ? parseFloat((totalDigitsSum / users.length).toFixed(2)) : 0
+      },
       data: userData,
-      note: 'Use POST method to /api/users for sum calculations'
+      security: '🔐 Secure password storage + individual digits sum',
+      calculation_method: 'Individual digits sum (e.g., 2006 → 2+0+0+6 = 8)',
+      note: 'Use POST method to /api/users for detailed sum calculations'
     });
 
   } catch (error) {
@@ -895,113 +1279,9 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// GET /api/users/sum - Alternative sum calculation endpoint
-app.get('/api/users/sum', async (req, res) => {
-  try {
-    console.log('🧮 Users sum calculation via GET endpoint');
-    
-    // Check if User model is available
-    if (!User) {
-      console.log('❌ Database not connected, returning dummy calculation');
-      
-      // Dummy calculation for testing
-      const dummyEmails = [
-        "gurujaskaran2006@gmail.com",
-        "john123@gmail.com", 
-        "alice2024@yahoo.com",
-        "bob456789@outlook.com"
-      ];
-
-      let totalSum = 0;
-      const results = [];
-
-      dummyEmails.forEach((email, index) => {
-        const numbers = email.match(/\d+/g) || [];
-        const sum = numbers.reduce((acc, num) => acc + parseInt(num), 0);
-        totalSum += sum;
-        
-        results.push({
-          email,
-          numbersFound: numbers,
-          individualSum: sum
-        });
-        
-        console.log(`${index + 1}. ${email} → Sum: ${sum}`);
-      });
-
-      console.log(`🧮 Dummy Total Sum: ${totalSum}`);
-
-      return res.json({
-        success: true,
-        message: '🧮 Dummy sum calculation completed (GET method)',
-        source: 'dummy_data',
-        totalSum,
-        userCount: dummyEmails.length,
-        data: results
-      });
-    }
-
-    // If database is available, fetch real users
-    const users = await User.find({}).select('name email');
-    
-    if (users.length === 0) {
-      return res.json({
-        success: true,
-        message: 'No users found in database',
-        totalSum: 0,
-        data: []
-      });
-    }
-
-    let totalSum = 0;
-    const results = [];
-
-    console.log('🧮 Calculating sum for database users:');
-    users.forEach((user, index) => {
-      const numbers = user.email.match(/\d+/g) || [];
-      const sum = numbers.reduce((acc, num) => acc + parseInt(num), 0);
-      totalSum += sum;
-      
-      results.push({
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        numbersFound: numbers,
-        individualSum: sum,
-        hasNumbers: numbers.length > 0
-      });
-      
-      if (numbers.length > 0) {
-        console.log(`${index + 1}. ${user.name}: ${user.email} → Sum: ${sum}`);
-      }
-    });
-
-    console.log(`🧮 Database Total Sum: ${totalSum}`);
-
-    res.json({
-      success: true,
-      message: '🧮 Users sum calculation completed (GET method)',
-      source: 'database',
-      summary: {
-        totalUsers: users.length,
-        usersWithNumbers: results.filter(u => u.hasNumbers).length,
-        grandTotalSum: totalSum,
-        averagePerUser: users.length > 0 ? parseFloat((totalSum / users.length).toFixed(2)) : 0
-      },
-      data: results
-    });
-
-  } catch (error) {
-    console.error('❌ Users sum calculation error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error calculating users sum',
-      error: error.message
-    });
-  }
-});
-
-console.log('✅ Users routes registered successfully');
+console.log('✅ Users routes registered successfully with individual digits sum calculation');
+console.log('🔐 Password hashing implemented with bcrypt');
+console.log('🧮 Individual digits sum calculation active');
 
 // ===== 404 HANDLERS =====
 
@@ -1014,16 +1294,17 @@ app.use('/api/*', (req, res) => {
     available_endpoints: [
       'GET /',
       'GET /api/health',
-      'GET /api/auth/google',
-      'GET /api/auth/check',
-      'GET /api/auth/me',
-      'POST /api/auth/logout',
-      'GET /api/properties',
-      'GET /api/properties/:id',
-      'POST /api/contact',
-      'GET /api/users',           // 👥 Simple user list
-      'POST /api/users',          // 🧮 Email sum calculation (Recommended)
-      'GET /api/users/sum'        // 🧮 Alternative sum calculation
+      'POST /api/auth/register',      // 📝 Secure registration with digits sum
+      'POST /api/auth/login',         // 🔐 Secure login with digits sum
+      'POST /api/auth/check-password', // 🔍 Password strength checker
+      'GET /api/auth/google',         // 🔐 Google OAuth
+      'GET /api/auth/check',          // ✅ Auth status with digits sum
+      'GET /api/auth/me',             // 👤 Current user with digits sum
+      'POST /api/auth/logout',        // 🚪 Logout
+      'GET /api/properties',          // 🏠 Properties list
+      'POST /api/contact',            // 📞 Contact form
+      'GET /api/users',               // 👥 Users list with digits sum
+      'POST /api/users'               // 🧮 Individual digits sum calculation
     ]
   });
 });
@@ -1058,7 +1339,9 @@ const server = app.listen(PORT, () => {
   console.log(`📊 Properties: http://localhost:${PORT}/api/properties`);
   console.log(`🔐 Google OAuth: http://localhost:${PORT}/api/auth/google`);
   console.log(`👥 Users List: http://localhost:${PORT}/api/users`);
-  console.log(`🧮 Users Sum: http://localhost:${PORT}/api/users (POST method)`);
+  console.log(`🧮 Users Digits Sum: http://localhost:${PORT}/api/users (POST method)`);
+  console.log(`📝 Register: http://localhost:${PORT}/api/auth/register`);
+  console.log(`🔐 Login: http://localhost:${PORT}/api/auth/login`);
   
   // Configuration check
   console.log('\n📋 Configuration Status:');
@@ -1066,7 +1349,11 @@ const server = app.listen(PORT, () => {
   console.log(`   Models: ${User ? '✅ Loaded' : '❌ Not loaded'}`);
   console.log(`   Google OAuth: ${process.env.GOOGLE_CLIENT_ID ? '✅' : '❌'}`);
   console.log(`   Session Secret: ${process.env.SESSION_SECRET ? '✅' : '❌'}`);
-  console.log(`   Users Sum API: ✅ Registered\n`);
+  console.log(`   🔐 Security: ✅ bcrypt password hashing enabled`);
+  console.log(`   🔍 Password validation: ✅ Strength checking active`);
+  console.log(`   📝 Manual Registration: ✅ Compatible with existing User model`);
+  console.log(`   🧮 Individual Digits Sum: ✅ Active (e.g., 2006 → 2+0+0+6 = 8)`);
+  console.log(`   🌐 Frontend Compatible: ✅ CORS enabled for frontend integration\n`);
 });
 
 // Handle unhandled promise rejections
