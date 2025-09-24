@@ -210,7 +210,8 @@ app.get('/', (req, res) => {
       health: '/api/health',
       auth: '/api/auth/*',
       properties: '/api/properties/*',
-      contact: '/api/contact'
+      contact: '/api/contact',
+      users: '/api/users'
     }
   });
 });
@@ -647,6 +648,363 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
+// ===== USERS ROUTES WITH EMAIL NUMBER SUM CALCULATION =====
+
+console.log('📝 Registering users routes...');
+
+// POST /api/users - Sum calculation of numbers in user emails
+app.post('/api/users', async (req, res) => {
+  try {
+    console.log('🧮 Users sum calculation API hit via POST!');
+    console.log('Request body:', req.body);
+    
+    // Check if User model is available
+    if (!User) {
+      console.log('❌ Database not connected, using dummy data');
+      
+      // Dummy data for testing when database is not available
+      const dummyUsers = [
+        { name: "Jaskaran Guru", email: "gurujaskaran2006@gmail.com" },
+        { name: "John Smith", email: "john123@gmail.com" },
+        { name: "Alice Johnson", email: "alice2024@yahoo.com" },
+        { name: "Bob Wilson", email: "bob456789@outlook.com" },
+        { name: "Sarah Davis", email: "sarah@gmail.com" },
+        { name: "Mike Brown", email: "mike789xyz@hotmail.com" }
+      ];
+
+      let totalSum = 0;
+      const results = [];
+
+      console.log('🧮 Processing dummy users for sum calculation:');
+      dummyUsers.forEach((user, index) => {
+        const numbers = user.email.match(/\d+/g) || [];
+        const sum = numbers.reduce((acc, num) => acc + parseInt(num), 0);
+        totalSum += sum;
+        
+        results.push({
+          name: user.name,
+          email: user.email,
+          numbersFound: numbers,
+          individualSum: sum,
+          hasNumbers: numbers.length > 0
+        });
+        
+        console.log(`${index + 1}. ${user.name}: ${user.email} → Numbers: [${numbers.join(',')}] → Sum: ${sum}`);
+      });
+
+      console.log(`\n📊 DUMMY DATA SUMMARY:`);
+      console.log(`   🧮 Total Sum: ${totalSum}`);
+      console.log(`   👥 Total Users: ${dummyUsers.length}`);
+      console.log(`   🔢 Users with Numbers: ${results.filter(u => u.hasNumbers).length}`);
+
+      return res.json({
+        success: true,
+        message: '🧮 Dummy users sum calculation completed',
+        source: 'dummy_data',
+        summary: {
+          totalUsers: dummyUsers.length,
+          usersWithNumbers: results.filter(u => u.hasNumbers).length,
+          grandTotalSum: totalSum,
+          averagePerUser: parseFloat((totalSum / dummyUsers.length).toFixed(2))
+        },
+        data: results,
+        note: 'This is dummy data. Connect MongoDB to get real user data.'
+      });
+    }
+
+    // Fetch users from database
+    const users = await User.find({})
+      .select('name email googleId avatar role createdAt lastLogin isActive')
+      .sort({ createdAt: -1 });
+
+    if (users.length === 0) {
+      console.log('⚠️ No users found in database');
+      return res.json({
+        success: true,
+        message: '👥 No users found in database',
+        totalUsers: 0,
+        totalSum: 0,
+        data: [],
+        note: 'Login with Google to create users'
+      });
+    }
+
+    console.log(`👥 Found ${users.length} users in database, calculating sum...`);
+
+    let grandTotal = 0;
+    const processedUsers = [];
+
+    // Process each user to find numbers in email and calculate sum
+    users.forEach((user, index) => {
+      console.log(`\n${index + 1}. Processing user: ${user.name}`);
+      console.log(`   📧 Email: ${user.email}`);
+      
+      // Extract all numbers from email using regex
+      const emailNumbers = user.email.match(/\d+/g) || [];
+      console.log(`   🔢 Numbers found: [${emailNumbers.join(', ')}]`);
+      
+      // Convert strings to integers and calculate sum
+      const numbersAsInts = emailNumbers.map(num => parseInt(num, 10));
+      const userSum = numbersAsInts.reduce((sum, num) => sum + num, 0);
+      
+      console.log(`   ➕ Individual sum: ${userSum}`);
+      
+      // Add to grand total
+      grandTotal += userSum;
+      
+      // Store processed user data
+      processedUsers.push({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        role: user.role,
+        joinedDate: user.createdAt,
+        lastLogin: user.lastLogin,
+        isActive: user.isActive,
+        emailAnalysis: {
+          hasNumbers: emailNumbers.length > 0,
+          numbersFound: emailNumbers,
+          numbersAsIntegers: numbersAsInts,
+          individualSum: userSum,
+          numberCount: emailNumbers.length
+        }
+      });
+    });
+
+    // Calculate statistics
+    const usersWithNumbers = processedUsers.filter(user => user.emailAnalysis.hasNumbers);
+    const usersWithoutNumbers = processedUsers.filter(user => !user.emailAnalysis.hasNumbers);
+
+    console.log(`\n📊 CALCULATION RESULTS:`);
+    console.log(`   🧮 Grand Total Sum: ${grandTotal}`);
+    console.log(`   👥 Total Users: ${users.length}`);
+    console.log(`   🔢 Users with Numbers: ${usersWithNumbers.length}`);
+    console.log(`   ❌ Users without Numbers: ${usersWithoutNumbers.length}`);
+    console.log(`   📈 Average per User: ${users.length > 0 ? (grandTotal / users.length).toFixed(2) : 0}`);
+    console.log(`   📈 Average per User with Numbers: ${usersWithNumbers.length > 0 ? (grandTotal / usersWithNumbers.length).toFixed(2) : 0}`);
+
+    // Return comprehensive response
+    res.json({
+      success: true,
+      message: '🧮 Users sum calculation completed successfully',
+      timestamp: new Date().toISOString(),
+      source: 'database',
+      summary: {
+        totalUsers: users.length,
+        usersWithNumbers: usersWithNumbers.length,
+        usersWithoutNumbers: usersWithoutNumbers.length,
+        grandTotalSum: grandTotal,
+        averagePerUser: users.length > 0 ? parseFloat((grandTotal / users.length).toFixed(2)) : 0,
+        averagePerUserWithNumbers: usersWithNumbers.length > 0 ? 
+          parseFloat((grandTotal / usersWithNumbers.length).toFixed(2)) : 0
+      },
+      calculations: processedUsers,
+      topUsers: usersWithNumbers
+        .sort((a, b) => b.emailAnalysis.individualSum - a.emailAnalysis.individualSum)
+        .slice(0, 5)
+        .map(user => ({
+          name: user.name,
+          email: user.email,
+          sum: user.emailAnalysis.individualSum,
+          numbers: user.emailAnalysis.numbersFound
+        })),
+      breakdown: {
+        usersWithNumbers: usersWithNumbers.map(user => ({
+          name: user.name,
+          email: user.email,
+          numbers: user.emailAnalysis.numbersFound,
+          sum: user.emailAnalysis.individualSum
+        })),
+        usersWithoutNumbers: usersWithoutNumbers.map(user => ({
+          name: user.name,
+          email: user.email
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Users sum calculation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error calculating users sum',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/users - Simple user list
+app.get('/api/users', async (req, res) => {
+  try {
+    console.log('📊 Fetching users via GET...');
+    
+    // Check if User model is available
+    if (!User) {
+      console.log('❌ Database not connected');
+      return res.status(503).json({
+        success: false,
+        message: '❌ Database not connected',
+        note: 'MongoDB connection required to fetch users'
+      });
+    }
+
+    // Fetch all users from database
+    const users = await User.find({})
+      .select('name email googleId avatar role createdAt lastLogin isActive')
+      .sort({ createdAt: -1 });
+
+    console.log(`👥 Found ${users.length} users in database`);
+
+    if (users.length === 0) {
+      return res.json({
+        success: true,
+        message: '👥 No users found in database',
+        totalUsers: 0,
+        data: [],
+        note: 'Login with Google to create users'
+      });
+    }
+
+    // Return simple user data without calculations
+    const userData = users.map(user => ({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      role: user.role,
+      joinedDate: user.createdAt,
+      lastLogin: user.lastLogin,
+      isActive: user.isActive
+    }));
+
+    res.json({
+      success: true,
+      message: '👥 Users fetched successfully',
+      totalUsers: users.length,
+      data: userData,
+      note: 'Use POST method to /api/users for sum calculations'
+    });
+
+  } catch (error) {
+    console.error('❌ Users fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching users',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/users/sum - Alternative sum calculation endpoint
+app.get('/api/users/sum', async (req, res) => {
+  try {
+    console.log('🧮 Users sum calculation via GET endpoint');
+    
+    // Check if User model is available
+    if (!User) {
+      console.log('❌ Database not connected, returning dummy calculation');
+      
+      // Dummy calculation for testing
+      const dummyEmails = [
+        "gurujaskaran2006@gmail.com",
+        "john123@gmail.com", 
+        "alice2024@yahoo.com",
+        "bob456789@outlook.com"
+      ];
+
+      let totalSum = 0;
+      const results = [];
+
+      dummyEmails.forEach((email, index) => {
+        const numbers = email.match(/\d+/g) || [];
+        const sum = numbers.reduce((acc, num) => acc + parseInt(num), 0);
+        totalSum += sum;
+        
+        results.push({
+          email,
+          numbersFound: numbers,
+          individualSum: sum
+        });
+        
+        console.log(`${index + 1}. ${email} → Sum: ${sum}`);
+      });
+
+      console.log(`🧮 Dummy Total Sum: ${totalSum}`);
+
+      return res.json({
+        success: true,
+        message: '🧮 Dummy sum calculation completed (GET method)',
+        source: 'dummy_data',
+        totalSum,
+        userCount: dummyEmails.length,
+        data: results
+      });
+    }
+
+    // If database is available, fetch real users
+    const users = await User.find({}).select('name email');
+    
+    if (users.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No users found in database',
+        totalSum: 0,
+        data: []
+      });
+    }
+
+    let totalSum = 0;
+    const results = [];
+
+    console.log('🧮 Calculating sum for database users:');
+    users.forEach((user, index) => {
+      const numbers = user.email.match(/\d+/g) || [];
+      const sum = numbers.reduce((acc, num) => acc + parseInt(num), 0);
+      totalSum += sum;
+      
+      results.push({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        numbersFound: numbers,
+        individualSum: sum,
+        hasNumbers: numbers.length > 0
+      });
+      
+      if (numbers.length > 0) {
+        console.log(`${index + 1}. ${user.name}: ${user.email} → Sum: ${sum}`);
+      }
+    });
+
+    console.log(`🧮 Database Total Sum: ${totalSum}`);
+
+    res.json({
+      success: true,
+      message: '🧮 Users sum calculation completed (GET method)',
+      source: 'database',
+      summary: {
+        totalUsers: users.length,
+        usersWithNumbers: results.filter(u => u.hasNumbers).length,
+        grandTotalSum: totalSum,
+        averagePerUser: users.length > 0 ? parseFloat((totalSum / users.length).toFixed(2)) : 0
+      },
+      data: results
+    });
+
+  } catch (error) {
+    console.error('❌ Users sum calculation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error calculating users sum',
+      error: error.message
+    });
+  }
+});
+
+console.log('✅ Users routes registered successfully');
+
+// ===== 404 HANDLERS =====
+
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
   res.status(404).json({
@@ -658,9 +1016,14 @@ app.use('/api/*', (req, res) => {
       'GET /api/health',
       'GET /api/auth/google',
       'GET /api/auth/check',
+      'GET /api/auth/me',
+      'POST /api/auth/logout',
       'GET /api/properties',
       'GET /api/properties/:id',
-      'POST /api/contact'
+      'POST /api/contact',
+      'GET /api/users',           // 👥 Simple user list
+      'POST /api/users',          // 🧮 Email sum calculation (Recommended)
+      'GET /api/users/sum'        // 🧮 Alternative sum calculation
     ]
   });
 });
@@ -694,13 +1057,16 @@ const server = app.listen(PORT, () => {
   console.log(`🔍 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`📊 Properties: http://localhost:${PORT}/api/properties`);
   console.log(`🔐 Google OAuth: http://localhost:${PORT}/api/auth/google`);
+  console.log(`👥 Users List: http://localhost:${PORT}/api/users`);
+  console.log(`🧮 Users Sum: http://localhost:${PORT}/api/users (POST method)`);
   
   // Configuration check
   console.log('\n📋 Configuration Status:');
   console.log(`   MongoDB: ${process.env.MONGODB_URI ? '✅' : '❌'}`);
   console.log(`   Models: ${User ? '✅ Loaded' : '❌ Not loaded'}`);
   console.log(`   Google OAuth: ${process.env.GOOGLE_CLIENT_ID ? '✅' : '❌'}`);
-  console.log(`   Session Secret: ${process.env.SESSION_SECRET ? '✅' : '❌'}\n`);
+  console.log(`   Session Secret: ${process.env.SESSION_SECRET ? '✅' : '❌'}`);
+  console.log(`   Users Sum API: ✅ Registered\n`);
 });
 
 // Handle unhandled promise rejections
